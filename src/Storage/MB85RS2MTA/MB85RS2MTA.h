@@ -14,6 +14,19 @@ public:
     bool Init(uint8_t chipSelect, SPIClass* spi);
 
 private:
+    enum class OPCodes : uint8_t
+    {
+        WREN   = 0x6,
+        WRDI   = 0x4,
+        RDSR   = 0x5,
+        WRSR   = 0x1,
+        READ   = 0x3,
+        WRITE  = 0x2,
+        RDID   = 0x9F,
+        FSTRD  = 0xB,
+        SLEEP  = 0xB9,
+    };
+
     uint8_t m_chipSelect;
     SPIClass* m_spi;
 };

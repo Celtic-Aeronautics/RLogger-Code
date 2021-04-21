@@ -12,11 +12,12 @@ MS5611 pressureSensor;
 BMI160 imu;
 MB85RS2MTA fram;
 
+#define FRAM_CS 10
+
 // Would be nice to have a base sensor class
 
 void setup() 
 {
-
   Serial.begin(9600);
 
   Wire.begin();
@@ -32,7 +33,11 @@ void setup()
     Serial.println("Failed to initialize the pressure sensor!");
   }
 
-  if(!fram.Init(10, &SPI))
+  // We need to configure the CS pin as output and also de-select the FRAM
+  pinMode(FRAM_CS, OUTPUT);
+  digitalWrite(FRAM_CS, HIGH);
+
+  if(!fram.Init(FRAM_CS, &SPI))
   {
     Serial.println("Failed to initialize the FRAM!");
   }
