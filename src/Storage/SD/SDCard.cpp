@@ -17,5 +17,12 @@ bool SDCard::Init(uint8_t chipSelect)
         return false;
     }
 
+    
+    csd_t csd = {};
+    sd.card()->readCSD(&csd);
+    uint32_t capacity = sdCardCapacity(&csd);
+
+    Serial.print("Total SDCard capacity:"); Serial.println((float)capacity * 0.000512f);
+
     return true;
 }
