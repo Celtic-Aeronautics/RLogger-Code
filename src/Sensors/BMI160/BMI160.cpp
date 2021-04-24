@@ -3,8 +3,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#define BMI_DEBUG_OUT    1
-#define BMI_EXTRA_CHECKS 1
+#define BMI_DEBUG_OUT    0
+#define BMI_EXTRA_CHECKS 0
 
 const uint8_t k_deviceID = 0xD1;
 

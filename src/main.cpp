@@ -4,17 +4,25 @@
 
 #include "Sensors/MS5611/MS5611.h"
 #include "Sensors/BMI160/BMI160.h"
+
 #include "Storage/MB85RS2MTA/MB85RS2MTA.h"
+#include "Storage/SD/SDCard.h"
 
 #include "Utils/Pressure.h"
 
 MS5611 pressureSensor;
 BMI160 imu;
 MB85RS2MTA fram;
+SDCard sdCard;
 
 #define FRAM_CS 10
+#define SD_CS   9
 
-// Would be nice to have a base sensor class
+void SetputPinAsCS(uint8_t pin, bool disable = true)
+{
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, disable ? HIGH : LOW);
+}
 
 void setup() 
 {
@@ -22,6 +30,10 @@ void setup()
 
   Wire.begin();
   SPI.begin();
+
+  // Configure CS Pins
+  SetputPinAsCS(FRAM_CS);
+  SetputPinAsCS(SD_CS);
 
   if(!imu.Init(&Wire))
   {
@@ -33,15 +45,15 @@ void setup()
     Serial.println("Failed to initialize the pressure sensor!");
   }
 
-  // We need to configure the CS pin as output and also de-select the FRAM
-  pinMode(FRAM_CS, OUTPUT);
-  digitalWrite(FRAM_CS, HIGH);
-
   if(!fram.Init(FRAM_CS, &SPI))
   {
     Serial.println("Failed to initialize the FRAM!");
   }
 
+  if(!sdCard.Init(SD_CS))
+  {
+    Serial.println("Failed to init the SD card");
+  }
 }
 
 void loop() 
