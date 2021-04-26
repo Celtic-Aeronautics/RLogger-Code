@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 class SPIClass;
+class SPISettings;
 
 // Memory FRAM
 // Datasheet: https://cdn-shop.adafruit.com/product-files/4718/4718_MB85RS2MTA.pdf
@@ -12,6 +13,14 @@ public:
     MB85RS2MTA();
 
     bool Init(uint8_t chipSelect, SPIClass* spi);
+
+    void Write(const uint32_t address, const uint8_t value);
+
+    void Write(const uint32_t address, void* data, uint8_t dataSize);
+
+    uint8_t Read(const uint32_t address);
+
+    void Read(const uint32_t address, void* data, uint8_t dataSize);
 
 private:
     enum class OPCodes : uint8_t
@@ -27,6 +36,17 @@ private:
         SLEEP  = 0xB9,
     };
 
+    void SplitAddress(const uint32_t address, uint8_t* values);
+    
+    uint32_t CombineAddress(uint8_t* values);
+
+    void BeginTransaction();
+
+    void EndTransaction();
+
+    void WriteCommand(const OPCodes command);
+
     uint8_t m_chipSelect;
     SPIClass* m_spi;
+    SPISettings* m_spiSettings;
 };

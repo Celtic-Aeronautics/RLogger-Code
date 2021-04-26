@@ -54,6 +54,12 @@ void setup()
   {
     Serial.println("Failed to init the SD card");
   }
+
+  // test.
+  uint32_t testAddr = 75123;
+  uint8_t testValue = 123;
+  fram.Write(testAddr, testValue);
+  Serial.println(fram.Read(testAddr));
 }
 
 void loop() 
