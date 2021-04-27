@@ -16,11 +16,11 @@ public:
 
     void Write(const uint32_t address, const uint8_t value);
 
-    void Write(const uint32_t address, void* data, uint8_t dataSize);
+    void Write(const uint32_t address, uint8_t* data, uint8_t dataSize);
 
     uint8_t Read(const uint32_t address);
 
-    void Read(const uint32_t address, void* data, uint8_t dataSize);
+    void Read(const uint32_t address, uint8_t* data, uint8_t dataSize);
 
 private:
     enum class OPCodes : uint8_t

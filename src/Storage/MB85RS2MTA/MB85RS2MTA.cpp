@@ -49,12 +49,12 @@ bool MB85RS2MTA::Init(uint8_t chipSelect, SPIClass* spi)
     return true;
 }
 
-void MB85RS2MTA::Write(const uint32_t address, const uint8_t value)
+void MB85RS2MTA::Write(const uint32_t address, uint8_t value)
 {
-    Write(address, (void*)&value, 1);
+    Write(address, &value, 1u);
 }
 
-void MB85RS2MTA::Write(const uint32_t address, void* data, uint8_t dataSize)
+void MB85RS2MTA::Write(const uint32_t address, uint8_t* data, uint8_t dataSize)
 {
     uint8_t addrBits[3];
     SplitAddress(address, addrBits);
@@ -75,28 +75,13 @@ void MB85RS2MTA::Write(const uint32_t address, void* data, uint8_t dataSize)
 
 uint8_t MB85RS2MTA::Read(const uint32_t address)
 {
-    uint8_t readValue = 0xff;
-    uint8_t addrBits[3];
-    SplitAddress(address, addrBits);
-
-    BeginTransaction();
-    {
-        m_spi->transfer((uint8_t)OPCodes::READ);
-        m_spi->transfer(addrBits[0]);
-        m_spi->transfer(addrBits[1]);
-        m_spi->transfer(addrBits[2]);
-        m_spi->transfer(&readValue,1);
-    }
-    EndTransaction();
-
-    return readValue;
+    uint8_t value  = 0;
+    Read(address, &value, 1u);
+    return value;
 }
 
-void MB85RS2MTA::Read(const uint32_t address, void* data, uint8_t dataSize)
+void MB85RS2MTA::Read(const uint32_t address, uint8_t* data, uint8_t dataSize)
 {
-    // need to think about this one
-    /*
-    uint8_t readValue = 0xff;
     uint8_t addrBits[3];
     SplitAddress(address, addrBits);
 
@@ -108,12 +93,10 @@ void MB85RS2MTA::Read(const uint32_t address, void* data, uint8_t dataSize)
         m_spi->transfer(addrBits[2]);
         for(uint8_t cur = 0; cur < dataSize; ++cur)
         {
-            m_spi->transfer(&readValue, 1);
-            memcpy(&readValue, data + cur, 1);
+            m_spi->transfer((void*)&data[cur], 1);
         }
     }
     EndTransaction();
-    */
 }
 
 void MB85RS2MTA::SplitAddress(const uint32_t address, uint8_t* values)
