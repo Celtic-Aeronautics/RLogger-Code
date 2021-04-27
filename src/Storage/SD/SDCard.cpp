@@ -1,5 +1,7 @@
 #include "SDCard.h"
 
+#include "Utils/Debug/DebugOutput.h"
+
 #include <SdFat.h>
 
 SDCard::SDCard()
@@ -22,7 +24,6 @@ bool SDCard::Init(uint8_t chipSelect)
     sd.card()->readCSD(&csd);
     uint32_t capacity = sdCardCapacity(&csd);
 
-    Serial.print("Total SDCard capacity:"); Serial.println((float)capacity * 0.000512f);
-
+    DEBUG_LOG("Total SDCard capacity:%f MB", (float)capacity * 0.000512f);
     return true;
 }

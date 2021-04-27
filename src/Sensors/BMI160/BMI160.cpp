@@ -1,10 +1,11 @@
 #include "BMI160.h"
 
+#include "Utils/Debug/DebugOutput.h"
+
 #include <Arduino.h>
 #include <Wire.h>
 
-#define BMI_DEBUG_OUT    0
-#define BMI_EXTRA_CHECKS 0
+#define BMI_EXTRA_CHECKS 1
 
 const uint8_t k_deviceID = 0xD1;
 
@@ -48,7 +49,7 @@ bool BMI160::Init(TwoWire* wire, uint8_t address)
         m_wire->readBytes(&deviceID, 1);
         if(deviceID != k_deviceID)
         {
-            Serial.println("Invalid ID returned by the device");
+            DEBUG_LOG("Invalid ID returned by the device");
             return false;
         }
     }
@@ -71,14 +72,12 @@ bool BMI160::ReadIMU()
     Vec3 accel = {};
     if(!ReadData(rate, accel))
     {
-#if BMI_DEBUG_OUT == 1
-        Serial.println("Could not read gyro data");
-#endif
+        DEBUG_LOG("Could not read IMU data");
         return false;
     }
 
-#if BMI_DEBUG_OUT == 1
-    //Serial.print(rate.x, 8);Serial.print(",");Serial.print(rate.y, 8);Serial.print(",");Serial.println(rate.z, 8);
+#if 0
+    Serial.print(rate.x, 8);Serial.print(",");Serial.print(rate.y, 8);Serial.print(",");Serial.println(rate.z, 8);
     Serial.print(accel.x, 8);Serial.print(",");Serial.print(accel.y, 8);Serial.print(",");Serial.println(accel.z, 8);
 #endif
 

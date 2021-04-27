@@ -1,8 +1,10 @@
 #include "MB85RS2MTA.h"
 
+#include "Utils/Debug/DebugOutput.h"
+
 #include <SPI.h>
 
-#define MB_EXTRA_CHECKS 0
+#define MB_EXTRA_CHECKS 1
 
 MB85RS2MTA::MB85RS2MTA()
     : m_chipSelect(0)
@@ -39,7 +41,7 @@ bool MB85RS2MTA::Init(uint8_t chipSelect, SPIClass* spi)
     SplitAddress(tempAddr, tempValues);
     if(CombineAddress(tempValues) != tempAddr)
     {
-        Serial.println("Address logic not working");
+        DEBUG_LOG("Address logic not working");
     }
 #endif
 

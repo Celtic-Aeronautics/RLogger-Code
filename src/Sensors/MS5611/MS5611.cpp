@@ -1,5 +1,7 @@
 #include "MS5611.h"
 
+#include "Utils/Debug/DebugOutput.h"
+
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -13,7 +15,6 @@ const uint8_t k_convertD2Commands [5] = {0x50, 0x52, 0x54, 0x56, 0x58 };
 
 #define MS_TEST      0
 #define MS_TEST_LOWT 0
-#define MS_DEBUG_OUT 0
 
 int64_t clamp(int64_t value, int64_t minValue, int64_t maxValue)
 {
@@ -126,7 +127,7 @@ bool MS5611::ReadPressure(float& pressure, OSR tempOSR, OSR pressureOSR)
     pressure = (float)P * 0.01f;
     m_lastTemperature = (float)TEMP * 0.01f;
 
-#if MS_DEBUG_OUT == 1
+#if 0
     Serial.print("Temperature: "); Serial.print(m_lastTemperature); 
     Serial.print(" Pressure: "); Serial.println(pressure);
 #endif
@@ -195,13 +196,14 @@ bool MS5611::ReadCalibration()
     m_calibration[6] = 28312;
 #endif
 
-#if MS_DEBUG_OUT == 1
-    Serial.println("Calibration values:");
+#if 1
+    DEBUG_LOG("Calibration values:");
     for(uint8_t index = 0; index < 7; ++index)
     {
-        Serial.println(m_calibration[index]);
+        DEBUG_LOG("%i", m_calibration[index]);
     }
 #endif
+
     
     // Do this only once
     m_calibration[1] *= 32768;

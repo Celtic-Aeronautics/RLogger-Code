@@ -9,6 +9,7 @@
 #include "Storage/SD/SDCard.h"
 
 #include "Utils/Pressure.h"
+#include "Utils/Debug/DebugOutput.h"
 
 MS5611 pressureSensor;
 BMI160 imu;
@@ -26,7 +27,10 @@ void SetputPinAsCS(uint8_t pin, bool disable = true)
 
 void setup() 
 {
+#ifdef DEBUG_OUTPUT_ENABLED
   Serial.begin(9600);
+  while(!Serial) {};
+#endif
 
   Wire.begin();
   SPI.begin();
@@ -37,22 +41,22 @@ void setup()
 
   if(!imu.Init(&Wire))
   {
-    Serial.println("Failed to init the IMU");
+    DEBUG_LOG("Failed to init the IMU");
   }
 
   if(!pressureSensor.Init(&Wire, MS5611::m_defaultAddr))
   {
-    Serial.println("Failed to initialize the pressure sensor!");
+    DEBUG_LOG("Failed to initialize the pressure sensor!");
   }
 
   if(!fram.Init(FRAM_CS, &SPI))
   {
-    Serial.println("Failed to initialize the FRAM!");
+    DEBUG_LOG("Failed to initialize the FRAM!");
   }
 
   if(!sdCard.Init(SD_CS))
   {
-    Serial.println("Failed to init the SD card");
+    DEBUG_LOG("Failed to init the SD card");
   }
 }
 
@@ -65,6 +69,8 @@ void loop()
   float altitude = Pressure::GetAltitudeFromPa(p, 101500.0f);
   float temp = pressureSensor.GetLastTemperature();
   
+  DEBUG_LOG("Altitude: %f ", altitude);
+
   imu.ReadIMU();
 
   delay(50);

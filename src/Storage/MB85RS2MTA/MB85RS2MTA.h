@@ -14,12 +14,16 @@ public:
 
     bool Init(uint8_t chipSelect, SPIClass* spi);
 
+    // Writes a single value to address
     void Write(const uint32_t address, const uint8_t value);
 
+    // Writes a block of data starting at address
     void Write(const uint32_t address, uint8_t* data, uint8_t dataSize);
 
+    // Reads single value from address
     uint8_t Read(const uint32_t address);
 
+    // Reads a block of data starting at address
     void Read(const uint32_t address, uint8_t* data, uint8_t dataSize);
 
 private:
