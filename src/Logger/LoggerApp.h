@@ -12,7 +12,6 @@ enum class LoggerState : uint8_t
     Dump,
     End,
     Error,
-    COUNT
 };
 
 enum class LoggerResult : uint8_t
@@ -48,10 +47,17 @@ public:
     void Update();
 
 private:
+    void SwapState();
+
+    void GatherCurrentState();
+
     LoggerState m_state;
 
     BMI160* m_imu;
     MS5611* m_baro;
     MB85RS2MTA* m_fram;
     SDCard* m_sd;
+
+    State m_currentState;
+    State m_prevState;
 };

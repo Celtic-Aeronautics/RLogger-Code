@@ -27,6 +27,8 @@ LoggerApp::LoggerApp()
     , m_baro(nullptr)
     , m_fram(nullptr)
     , m_sd(nullptr)
+    , m_currentState()
+    , m_prevState()
 {
 }
 
@@ -40,47 +42,109 @@ LoggerResult LoggerApp::Init()
     SetputPinAsCS(FRAM_CS);
     SetputPinAsCS(SD_CS);
 
-    m_imu = new BMI160();
-    if(!m_imu->Init(&Wire))
+    // Init sensors and storage
     {
-        DEBUG_LOG("Failed to init the IMU");
-        return LoggerResult::FailedInitIMU;
+        m_imu = new BMI160();
+        if(!m_imu->Init(&Wire))
+        {
+            DEBUG_LOG("Failed to init the IMU");
+            return LoggerResult::FailedInitIMU;
+        }
+
+        m_baro = new MS5611();
+        if(!m_baro->Init(&Wire, MS5611::m_defaultAddr))
+        {
+            DEBUG_LOG("Failed to initialize baro!");
+            return LoggerResult::FailedInitBarometer;
+        }
+
+        m_fram = new MB85RS2MTA();
+        if(!m_fram->Init(FRAM_CS, &SPI))
+        {
+            DEBUG_LOG("Failed to initialize the FRAM!");
+            return LoggerResult::FailedInitFRAM;
+        }
+
+        m_sd = new SDCard();
+        if(!m_sd->Init(SD_CS))
+        {
+            DEBUG_LOG("Failed to init the SD card");
+            return LoggerResult::FailedInitSD;
+        }
     }
 
-    m_baro = new MS5611();
-    if(!m_baro->Init(&Wire, MS5611::m_defaultAddr))
-    {
-        DEBUG_LOG("Failed to initialize baro!");
-        return LoggerResult::FailedInitBarometer;
-    }
+    // Check status (brown out)
+    // TODO
 
-    m_fram = new MB85RS2MTA();
-    if(!m_fram->Init(FRAM_CS, &SPI))
-    {
-        DEBUG_LOG("Failed to initialize the FRAM!");
-        return LoggerResult::FailedInitFRAM;
-    }
-
-    m_sd = new SDCard();
-    if(!m_sd->Init(SD_CS))
-    {
-        DEBUG_LOG("Failed to init the SD card");
-        return LoggerResult::FailedInitSD;
-    }
+    m_state = LoggerState::Idle; // We are now waiting to detect launch
 
     return LoggerResult::Success;
 }
 
+static bool k_first = true;
+
 void LoggerApp::Update()
 {
-    float p = 0.0f;
-    m_baro->ReadPressure(p, OSR::OSR_4096, OSR::OSR_4096);
-    p = Pressure::MBarToPascal(p);
+    GatherCurrentState();
 
-    float altitude = Pressure::GetAltitudeFromPa(p, 101500.0f);
-    float temp = m_baro->GetLastTemperature();
-  
-    DEBUG_LOG("Altitude: %f ", altitude);
+    // Ensure we have valid previous state
+    if(k_first)
+    {
+        m_prevState = m_currentState;
+    }
 
-    m_imu->ReadIMU();
+    switch (m_state)
+    {
+        case LoggerState::Boot:
+        {
+            break;
+        }
+        case LoggerState::Idle:
+        {
+            float deltaAltitude = m_currentState.m_altitude - m_prevState.m_altitude;
+            if(deltaAltitude >= 0.2f && m_currentState.m_acceleration.y > 10.0f)
+            {
+                m_state = LoggerState::Active;
+            }
+            break;
+        }
+        case LoggerState::Active:
+        {
+            break;
+        }
+        case LoggerState::Dump:
+        {
+            break;
+        }
+        case LoggerState::End:
+        {
+            break;
+        }
+        case LoggerState::Error:
+        {
+            break;
+        }
+    }
+
+    // Swap state for the next frame
+    SwapState();
+}
+
+void LoggerApp::SwapState()
+{
+    m_prevState = m_currentState;
+}
+
+void LoggerApp::GatherCurrentState()
+{
+    // Get barometric altitude
+    float curPressure = 0.0f;
+    m_baro->ReadPressure(curPressure, OSR::OSR_4096, OSR::OSR_4096);
+    curPressure = Pressure::MBarToPascal(curPressure);
+
+    m_currentState.m_altitude = Pressure::GetAltitudeFromPa(curPressure, 101500.0f);
+
+    m_currentState.m_temperature = m_baro->GetLastTemperature();
+
+    m_imu->ReadIMU(m_currentState.m_acceleration, m_currentState.m_angularRate);
 }

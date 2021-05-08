@@ -66,11 +66,9 @@ bool BMI160::IsConnected()
     return m_wire->endTransmission() == 0;
 }
 
-bool BMI160::ReadIMU()
+bool BMI160::ReadIMU(Vec3& acceleration, Vec3& angularRate)
 {
-    Vec3 rate = {};
-    Vec3 accel = {};
-    if(!ReadData(rate, accel))
+    if(!ReadData(acceleration, angularRate))
     {
         DEBUG_LOG("Could not read IMU data");
         return false;
@@ -84,7 +82,7 @@ bool BMI160::ReadIMU()
     return true;
 }
 
-bool BMI160::ReadData(Vec3& angularRate, Vec3& acceleration)
+bool BMI160::ReadData(Vec3& acceleration, Vec3& angularRate)
 {
     // Start reading the gyro data
     int16_t rawGyro[3];

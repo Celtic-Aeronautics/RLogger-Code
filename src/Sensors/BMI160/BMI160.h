@@ -57,11 +57,11 @@ public:
 
     bool IsConnected();
 
-    bool ReadIMU();
+    bool ReadIMU(Vec3& acceleration, Vec3& angularRate);
 
 private:
     
-    bool ReadData(Vec3& angularRate, Vec3& acceleration);
+    bool ReadData(Vec3& acceleration, Vec3& angularRate);
 
     bool ReadRawData(uint8_t dataRegister, int16_t* data, uint8_t count);
 
