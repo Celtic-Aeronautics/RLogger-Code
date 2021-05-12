@@ -29,10 +29,14 @@ LoggerApp::LoggerApp()
     , m_sd(nullptr)
     , m_currentState()
     , m_prevState()
+    , m_samplesPerSecond(0)
+    , m_deltaTime(0.0f)
+    , m_stateDataSize((uint8_t)sizeof(State))
+    , m_currentFRAMAddr(0)
 {
 }
 
-LoggerResult LoggerApp::Init()
+LoggerResult LoggerApp::Init(int samplesPerSecond)
 {
     // Init data protocols
     Wire.begin();
@@ -71,7 +75,13 @@ LoggerResult LoggerApp::Init()
             DEBUG_LOG("Failed to init the SD card");
             return LoggerResult::FailedInitSD;
         }
+
+        m_sd->TestWrite();
     }
+
+    // Setup delta times
+    m_samplesPerSecond = samplesPerSecond;
+    m_deltaTime = 1.0f / (float)m_samplesPerSecond;
 
     // Check status (brown out)
     // TODO
@@ -83,8 +93,10 @@ LoggerResult LoggerApp::Init()
 
 static bool k_first = true;
 
-void LoggerApp::Update()
+void LoggerApp::Run()
 {
+    // TO-DO: while true, take time
+
     GatherCurrentState();
 
     // Ensure we have valid previous state
@@ -128,6 +140,56 @@ void LoggerApp::Update()
 
     // Swap state for the next frame
     SwapState();
+}
+
+// TO-DO: ifdef this out, only for testing
+void LoggerApp::RunTest(float runTime)
+{
+    float totalTimeSec = 0.0f;
+    float elapsed = m_deltaTime;
+    uint32_t numSamples = 0;
+    
+    while(true)
+    {    
+        uint64_t startTime = millis();  
+
+        if(elapsed >= m_deltaTime)
+        {
+            elapsed = 0.0f;
+            
+            GatherCurrentState();
+
+            // Write state to the FRAM and increment the address
+            m_fram->Write(m_currentFRAMAddr, (uint8_t*)&m_currentState, m_stateDataSize);
+            m_currentFRAMAddr += m_stateDataSize;
+            ++numSamples;
+        }
+        else
+        {
+            // Wait for 50% of the remaining time (this will spin.. maybe we can do something useful here)
+            float toWait = (m_deltaTime - elapsed) * 0.5f;
+            delay(toWait);
+        }
+
+        // Update elapsed
+        uint64_t curTime = millis();
+        uint32_t deltaTime = curTime - startTime;
+
+        elapsed += deltaTime * 0.001f;
+        totalTimeSec += elapsed;
+
+        // Stop if we are done for the test
+        if(totalTimeSec >= runTime)
+        {
+            break;
+        }
+    }
+
+    // Dump to the SD card
+    for(uint32_t sampleIdx = 0; sampleIdx < numSamples; ++sampleIdx)
+    {
+
+    }
 }
 
 void LoggerApp::SwapState()

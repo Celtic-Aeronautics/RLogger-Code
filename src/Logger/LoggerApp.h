@@ -42,9 +42,13 @@ class LoggerApp
 public:
     LoggerApp();
 
-    LoggerResult Init();
+    LoggerResult Init(int samplesPerSecond);
 
-    void Update();
+    void Run();
+
+    // For testing only. It will record data for 'runTime' and dump it to the SD card
+    // frequency as defined by Init()
+    void RunTest(float runTime);
 
 private:
     void SwapState();
@@ -60,4 +64,15 @@ private:
 
     State m_currentState;
     State m_prevState;
+
+    // The number of states to capture per second
+    int m_samplesPerSecond;
+
+    // Time (in seconds) between each sample
+    float m_deltaTime;
+
+    // The size (in bytes) of each state packet
+    uint8_t m_stateDataSize;
+
+    uint32_t m_currentFRAMAddr;
 };

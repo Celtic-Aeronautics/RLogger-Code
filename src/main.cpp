@@ -11,12 +11,12 @@ void setup()
   while(!Serial) {};
 #endif
 
-  g_app.Init();
+  g_app.Init(4);
 }
 
 void loop() 
 {
-  g_app.Update();
+  g_app.Run();
 
   delay(50);
 }
