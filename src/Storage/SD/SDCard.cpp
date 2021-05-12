@@ -4,6 +4,8 @@
 
 #include <SdFat.h>
 
+#define SD_CONFIG SdSpiConfig(SD_CS_PIN, DEDICATED_SPI)
+
 SDCard::SDCard()
     : m_chipSelect(0)
 {
@@ -25,17 +27,22 @@ bool SDCard::Init(uint8_t chipSelect)
 
     DEBUG_LOG("Total SDCard capacity:%f MB", (float)capacity * 0.000512f);
 
+    delay(50);
+
     return true;
 }
 
-
 void SDCard::TestWrite()
 {
-    File f;
-    if(f.open("logs/log1.csv", O_WRONLY | O_CREAT))
-    {
+    
 
-        f.write("A ver si esto tira");
+    File f;
+    if(f.open("log1.csv", O_CREAT))
+    {
         f.close();
+    }
+    else
+    {
+        DEBUG_LOG("Failed to run the SD card Test %i", f.getError());
     }
 }

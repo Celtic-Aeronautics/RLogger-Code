@@ -16,7 +16,7 @@ void setup()
 
 void loop() 
 {
-  g_app.Run();
+  //g_app.Run();
 
   delay(50);
 }
