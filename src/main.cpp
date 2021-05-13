@@ -12,6 +12,8 @@ void setup()
 #endif
 
   g_app.Init(4);
+
+  g_app.RunTest(10.0f);
 }
 
 void loop() 

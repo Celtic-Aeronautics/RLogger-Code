@@ -48,6 +48,7 @@ Print* SDCard::CreateFile(const char* path)
 
     if(!m_file->open(path, O_RDWR | O_CREAT | O_TRUNC))
     {
+        m_sd->errorPrint(&Serial);
         return nullptr;
     }
 

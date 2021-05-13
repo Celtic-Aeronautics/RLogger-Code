@@ -26,6 +26,7 @@ enum class LoggerResult : uint8_t
 
 struct State
 {
+    float m_timeStamp;
     float m_altitude;
     float m_temperature;
     Vec3 m_acceleration;
@@ -36,6 +37,8 @@ class BMI160;
 class MS5611;
 class MB85RS2MTA;
 class SDCard;
+
+class Print;
 
 class LoggerApp
 {
@@ -53,7 +56,11 @@ public:
 private:
     void SwapState();
 
-    void GatherCurrentState();
+    void GatherCurrentState(float time);
+
+    void SerializeHeader(Print* stream);
+
+    void SerializeState(const State& state, Print* stream);
 
     LoggerState m_state;
 

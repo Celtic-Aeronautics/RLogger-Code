@@ -53,14 +53,12 @@ LoggerResult LoggerApp::Init(int samplesPerSecond)
         m_imu = new BMI160();
         if(!m_imu->Init(&Wire))
         {
-            DEBUG_LOG("Failed to init the IMU");
             return LoggerResult::FailedInitIMU;
         }
 
         m_baro = new MS5611();
         if(!m_baro->Init(&Wire, MS5611::m_defaultAddr))
         {
-            DEBUG_LOG("Failed to initialize baro!");
             return LoggerResult::FailedInitBarometer;
         }
 
@@ -68,7 +66,6 @@ LoggerResult LoggerApp::Init(int samplesPerSecond)
         m_fram = new MB85RS2MTA();
         if(!m_fram->Init(FRAM_CS, &SPI))
         {
-            DEBUG_LOG("Failed to initialize the FRAM!");
             return LoggerResult::FailedInitFRAM;
         }
 #endif
@@ -76,7 +73,6 @@ LoggerResult LoggerApp::Init(int samplesPerSecond)
         m_sd = new SDCard();
         if(!m_sd->Init(SD_CS))
         {
-            DEBUG_LOG("Failed to init the SD card");
             return LoggerResult::FailedInitSD;
         }
 
@@ -101,7 +97,7 @@ void LoggerApp::Run()
 {
     // TO-DO: while true, take time
 
-    GatherCurrentState();
+    GatherCurrentState(0.0f);
 
     // Ensure we have valid previous state
     if(k_first)
@@ -153,15 +149,18 @@ void LoggerApp::RunTest(float runTime)
     float elapsed = m_deltaTime;
     uint32_t numSamples = 0;
     
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, HIGH);
+
     while(true)
     {    
         uint64_t startTime = millis();  
 
         if(elapsed >= m_deltaTime)
         {
-            elapsed = 0.0f;
-            
-            GatherCurrentState();
+            elapsed = 0.0f; // Reset elapsed
+        
+            GatherCurrentState(totalTimeSec);
 
             // Write state to the FRAM and increment the address
             m_fram->Write(m_currentFRAMAddr, (uint8_t*)&m_currentState, m_stateDataSize);
@@ -170,17 +169,16 @@ void LoggerApp::RunTest(float runTime)
         }
         else
         {
-            // Wait for 50% of the remaining time (this will spin.. maybe we can do something useful here)
-            float toWait = (m_deltaTime - elapsed) * 0.5f;
-            delay(toWait);
+            // delay(2);
         }
+        
 
         // Update elapsed
         uint64_t curTime = millis();
-        uint32_t deltaTime = curTime - startTime;
+        float deltaTime = (float)(curTime - startTime) * 0.001f;
 
-        elapsed += deltaTime * 0.001f;
-        totalTimeSec += elapsed;
+        elapsed += deltaTime;
+        totalTimeSec += deltaTime;
 
         // Stop if we are done for the test
         if(totalTimeSec >= runTime)
@@ -189,11 +187,24 @@ void LoggerApp::RunTest(float runTime)
         }
     }
 
+    digitalWrite(LED_BUILTIN, LOW);
+
     // Dump to the SD card
+    Print* file = m_sd->CreateFile("RunTest.csv");
+    if(!file)
+    {
+        return;
+    }
+    SerializeHeader(file);
+    State parsedState = {};
     for(uint32_t sampleIdx = 0; sampleIdx < numSamples; ++sampleIdx)
     {
-
+        m_fram->Read(sampleIdx * m_stateDataSize, (uint8_t*)&parsedState, m_stateDataSize);
+        SerializeState(parsedState, file);
     }
+    m_sd->CloseFile();
+
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void LoggerApp::SwapState()
@@ -201,8 +212,10 @@ void LoggerApp::SwapState()
     m_prevState = m_currentState;
 }
 
-void LoggerApp::GatherCurrentState()
+void LoggerApp::GatherCurrentState(float time)
 {
+    m_currentState.m_timeStamp = time;
+
     // Get barometric altitude
     float curPressure = 0.0f;
     m_baro->ReadPressure(curPressure, OSR::OSR_4096, OSR::OSR_4096);
@@ -213,4 +226,31 @@ void LoggerApp::GatherCurrentState()
     m_currentState.m_temperature = m_baro->GetLastTemperature();
 
     m_imu->ReadIMU(m_currentState.m_acceleration, m_currentState.m_angularRate);
+}
+
+void LoggerApp::SerializeHeader(Print* stream)
+{
+    stream->print(F("TIME, ALTITUDE, TEMP, ACCEL_X, ACCEL_Y, ACCEL_Z, RATE_X, RATE_Y, RATE_Z \n"));
+}
+
+void LoggerApp::SerializeState(const State& state, Print* stream)
+{
+    stream->print(state.m_timeStamp); 
+    stream->print(',');
+    stream->print(state.m_altitude); 
+    stream->print(',');
+    stream->print(state.m_temperature); 
+    stream->print(',');
+    stream->print(state.m_acceleration.x); 
+    stream->print(',');
+    stream->print(state.m_acceleration.y); 
+    stream->print(',');
+    stream->print(state.m_acceleration.z); 
+    stream->print(',');
+    stream->print(state.m_angularRate.x); 
+    stream->print(',');
+    stream->print(state.m_angularRate.y); 
+    stream->print(',');
+    stream->print(state.m_angularRate.z);
+    stream->print('\n');
 }
