@@ -15,6 +15,8 @@
 #define FRAM_CS 10
 #define SD_CS   9
 
+// #define DISABLE_FRAM
+
 void SetputPinAsCS(uint8_t pin, bool disable = true)
 {
   pinMode(pin, OUTPUT);
@@ -62,12 +64,14 @@ LoggerResult LoggerApp::Init(int samplesPerSecond)
             return LoggerResult::FailedInitBarometer;
         }
 
+#ifndef DISABLE_FRAM
         m_fram = new MB85RS2MTA();
         if(!m_fram->Init(FRAM_CS, &SPI))
         {
             DEBUG_LOG("Failed to initialize the FRAM!");
             return LoggerResult::FailedInitFRAM;
         }
+#endif
 
         m_sd = new SDCard();
         if(!m_sd->Init(SD_CS))
