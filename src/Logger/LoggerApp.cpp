@@ -15,7 +15,10 @@
 #define FRAM_CS 10
 #define SD_CS   9
 
+#define IDLE_DELTA (1.0f / 40.0f)
+
 // #define DISABLE_FRAM
+// #define TEST_ENABLE
 
 void SetputPinAsCS(uint8_t pin, bool disable = true)
 {
@@ -32,9 +35,11 @@ LoggerApp::LoggerApp()
     , m_currentState()
     , m_prevState()
     , m_samplesPerSecond(0)
-    , m_deltaTime(0.0f)
+    , m_deltaTimeActive(0.0f)
+    , m_targetDeltaTime(0.0f)
     , m_stateDataSize((uint8_t)sizeof(State))
     , m_currentFRAMAddr(0)
+    , m_numSamples(0)
 {
 }
 
@@ -81,72 +86,49 @@ LoggerResult LoggerApp::Init(int samplesPerSecond)
 
     // Setup delta times
     m_samplesPerSecond = samplesPerSecond;
-    m_deltaTime = 1.0f / (float)m_samplesPerSecond;
+    m_deltaTimeActive = 1.0f / (float)m_samplesPerSecond;
 
     // Check status (brown out)
     // TODO
 
     m_state = LoggerState::Idle; // We are now waiting to detect launch
+    m_targetDeltaTime = IDLE_DELTA;
 
     return LoggerResult::Success;
 }
 
-static bool k_first = true;
-
 void LoggerApp::Run()
 {
-    // TO-DO: while true, take time
-
-    GatherCurrentState(0.0f);
-
-    // Ensure we have valid previous state
-    if(k_first)
+    float totalTimeSec = 0.0f;
+    float elapsed = m_targetDeltaTime;
+    
+    while(true)
     {
-        m_prevState = m_currentState;
-    }
+        uint64_t startTime = millis();
 
-    switch (m_state)
-    {
-        case LoggerState::Boot:
+        if(elapsed >= m_targetDeltaTime)
         {
-            break;
+            Update(totalTimeSec, elapsed); // We pass the actual elapsed time (could be more than target)
         }
-        case LoggerState::Idle:
+        else
         {
-            float deltaAltitude = m_currentState.m_altitude - m_prevState.m_altitude;
-            if(deltaAltitude >= 0.2f && m_currentState.m_acceleration.y > 10.0f)
-            {
-                m_state = LoggerState::Active;
-            }
-            break;
+            delay(1);
         }
-        case LoggerState::Active:
-        {
-            break;
-        }
-        case LoggerState::Dump:
-        {
-            break;
-        }
-        case LoggerState::End:
-        {
-            break;
-        }
-        case LoggerState::Error:
-        {
-            break;
-        }
-    }
 
-    // Swap state for the next frame
-    SwapState();
+        // Update elapsed
+        uint64_t curTime = millis();
+        float deltaTime = (float)(curTime - startTime) * 0.001f;
+
+        elapsed += deltaTime;
+        totalTimeSec += deltaTime;
+    }
 }
 
-// TO-DO: ifdef this out, only for testing
 void LoggerApp::RunTest(float runTime)
 {
+#ifdef TEST_ENABLE
     float totalTimeSec = 0.0f;
-    float elapsed = m_deltaTime;
+    float elapsed = m_deltaTimeActive;
     uint32_t numSamples = 0;
     
     pinMode(LED_BUILTIN, OUTPUT);
@@ -156,7 +138,7 @@ void LoggerApp::RunTest(float runTime)
     {    
         uint64_t startTime = millis();  
 
-        if(elapsed >= m_deltaTime)
+        if(elapsed >= m_deltaTimeActive)
         {
             elapsed = 0.0f; // Reset elapsed
         
@@ -205,10 +187,73 @@ void LoggerApp::RunTest(float runTime)
     m_sd->CloseFile();
 
     digitalWrite(LED_BUILTIN, HIGH);
+#endif
+}
+
+static bool k_first = true;
+
+void LoggerApp::Update(float totalTimeSec, float deltaTime)
+{
+    // Sample the sensors to gather current state
+    GatherCurrentState(totalTimeSec);
+
+    // Ensure we have valid previous state
+    if(k_first)
+    {
+        m_prevState = m_currentState;
+        k_first = false;
+    }
+
+    switch (m_state)
+    {
+        case LoggerState::Boot:
+        {
+            break;
+        }
+        case LoggerState::Idle:
+        {
+            float deltaAltitude = m_currentState.m_altitude - m_prevState.m_altitude;
+            if(deltaAltitude >= 0.2f && m_currentState.m_acceleration.y > 10.0f)
+            {
+                m_currentFRAMAddr = 0; // Reset FRAM address 
+                m_state = LoggerState::Active;
+            }
+            break;
+        }
+        case LoggerState::Active:
+        {
+            // Store current state packet
+            m_fram->Write(m_currentFRAMAddr, (uint8_t*)&m_currentState, m_stateDataSize);
+            m_currentFRAMAddr += m_stateDataSize;
+            ++m_numSamples;
+
+            // Check if we landed
+            // Acceleration magnitude should be <= 1G
+            // Altitude is not changing for a long period of time
+
+            break;
+        }
+        case LoggerState::Dump:
+        {
+            break;
+        }
+        case LoggerState::End:
+        {
+            break;
+        }
+        case LoggerState::Error:
+        {
+            break;
+        }
+    }
+
+    // Swap state for the next frame
+    SwapState();
 }
 
 void LoggerApp::SwapState()
 {
+    // TO-DO: maybe make this a pointer swap.. ?
     m_prevState = m_currentState;
 }
 
@@ -233,24 +278,27 @@ void LoggerApp::SerializeHeader(Print* stream)
     stream->print(F("TIME, ALTITUDE, TEMP, ACCEL_X, ACCEL_Y, ACCEL_Z, RATE_X, RATE_Y, RATE_Z \n"));
 }
 
+void LoggerApp::SerializeItem(Print* stream, float value, char separator, bool printSeparator /*= true*/)
+{
+    stream->print(value);
+    if(printSeparator)
+    {
+        stream->print(separator);
+    }
+}
+
 void LoggerApp::SerializeState(const State& state, Print* stream)
 {
-    stream->print(state.m_timeStamp); 
-    stream->print(',');
-    stream->print(state.m_altitude); 
-    stream->print(',');
-    stream->print(state.m_temperature); 
-    stream->print(',');
-    stream->print(state.m_acceleration.x); 
-    stream->print(',');
-    stream->print(state.m_acceleration.y); 
-    stream->print(',');
-    stream->print(state.m_acceleration.z); 
-    stream->print(',');
-    stream->print(state.m_angularRate.x); 
-    stream->print(',');
-    stream->print(state.m_angularRate.y); 
-    stream->print(',');
-    stream->print(state.m_angularRate.z);
+    static const char separator = ',';
+
+    SerializeItem(stream, state.m_timeStamp, separator); 
+    SerializeItem(stream, state.m_altitude, separator); 
+    SerializeItem(stream, state.m_acceleration.x, separator); 
+    SerializeItem(stream, state.m_acceleration.y, separator); 
+    SerializeItem(stream, state.m_acceleration.z, separator); 
+    SerializeItem(stream, state.m_angularRate.x, separator); 
+    SerializeItem(stream, state.m_angularRate.y, separator); 
+    SerializeItem(stream, state.m_angularRate.z, separator, false); 
+
     stream->print('\n');
 }

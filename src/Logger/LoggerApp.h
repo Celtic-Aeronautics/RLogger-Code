@@ -54,11 +54,15 @@ public:
     void RunTest(float runTime);
 
 private:
+    void Update(float totalTimeSec, float deltaTime);
+
     void SwapState();
 
     void GatherCurrentState(float time);
 
     void SerializeHeader(Print* stream);
+
+    void SerializeItem(Print* stream, float value, char separator, bool printSeparator = true);
 
     void SerializeState(const State& state, Print* stream);
 
@@ -75,11 +79,16 @@ private:
     // The number of states to capture per second
     int m_samplesPerSecond;
 
-    // Time (in seconds) between each sample
-    float m_deltaTime;
+    // Time in seconds between each sample (during Active state)
+    float m_deltaTimeActive;
+
+    // Requested delta time (can change based on the current state)
+    float m_targetDeltaTime;
 
     // The size (in bytes) of each state packet
     uint8_t m_stateDataSize;
 
     uint32_t m_currentFRAMAddr;
+
+    uint32_t m_numSamples;
 };
