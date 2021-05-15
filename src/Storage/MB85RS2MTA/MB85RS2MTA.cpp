@@ -101,6 +101,12 @@ void MB85RS2MTA::Read(const uint32_t address, uint8_t* data, uint8_t dataSize)
     EndTransaction();
 }
 
+uint32_t MB85RS2MTA::Capacity() const
+{
+    // TO-DO: improve this by querying from the chip (to make this generic)
+    return 262144;
+}
+
 void MB85RS2MTA::SplitAddress(const uint32_t address, uint8_t* values)
 {
     values[0] = (address >> 16u) & 0x3u;

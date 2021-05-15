@@ -3,41 +3,12 @@
 #include <stdint.h>
 
 #include "Utils/Math.h"
-
-enum class LoggerState : uint8_t
-{
-    Boot,
-    Idle,
-    Active,
-    Dump,
-    End,
-    Error,
-};
-
-enum class LoggerResult : uint8_t
-{
-    Success,
-    FailedInitBarometer,
-    FailedInitIMU,
-    FailedInitFRAM,
-    FailedInitSD,
-    COUNT,
-};
-
-struct State
-{
-    float m_timeStamp;
-    float m_altitude;
-    float m_temperature;
-    Vec3 m_acceleration;
-    Vec3 m_angularRate;
-};
+#include "LoggerDefinitions.h"
 
 class BMI160;
 class MS5611;
 class MB85RS2MTA;
 class SDCard;
-
 class Print;
 
 class LoggerApp
@@ -91,4 +62,10 @@ private:
     uint32_t m_currentFRAMAddr;
 
     uint32_t m_numSamples;
+
+    // How many samples can we store in the FRAM?
+    uint32_t m_maxSamples;
+
+    // With the current sampling frequency, for how long can we cample?
+    float m_maxActiveTime;
 };

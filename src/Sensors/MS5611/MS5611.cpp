@@ -196,7 +196,7 @@ bool MS5611::ReadCalibration()
     m_calibration[6] = 28312;
 #endif
 
-#if 1
+#if 0
     DEBUG_LOG("Calibration values:");
     for(uint8_t index = 0; index < 7; ++index)
     {

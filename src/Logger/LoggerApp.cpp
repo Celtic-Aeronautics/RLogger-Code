@@ -40,6 +40,8 @@ LoggerApp::LoggerApp()
     , m_stateDataSize((uint8_t)sizeof(State))
     , m_currentFRAMAddr(0)
     , m_numSamples(0)
+    , m_maxSamples(0)
+    , m_maxActiveTime(0.0f)
 {
 }
 
@@ -88,11 +90,25 @@ LoggerResult LoggerApp::Init(int samplesPerSecond)
     m_samplesPerSecond = samplesPerSecond;
     m_deltaTimeActive = 1.0f / (float)m_samplesPerSecond;
 
-    // Check status (brown out)
-    // TODO
+    // Figur out some maxs given the current config and FRAM capacity
+    uint32_t framCapacity = m_fram->Capacity();
+    m_maxSamples = (uint32_t)floor((float)framCapacity / (float)m_stateDataSize) ;
+    m_maxActiveTime = m_maxSamples * m_deltaTimeActive;
+
+    // TODO: check for brown out
 
     m_state = LoggerState::Idle; // We are now waiting to detect launch
     m_targetDeltaTime = IDLE_DELTA;
+
+    // Log some useful info (we may want to serialize this to the SD card too)    
+    {
+        DEBUG_LOG("Samples per second = %i", m_samplesPerSecond);
+        DEBUG_LOG("Active delta time: %f seconds", m_deltaTimeActive);
+        DEBUG_LOG("Max FRAM = %f", (float)framCapacity);
+        DEBUG_LOG("State size = %i bytes", m_stateDataSize);
+        DEBUG_LOG("Max number of samples = %i", m_maxSamples);
+        DEBUG_LOG("Max active time = %f seconds", m_maxActiveTime);
+    }
 
     return LoggerResult::Success;
 }
@@ -227,9 +243,21 @@ void LoggerApp::Update(float totalTimeSec, float deltaTime)
             m_currentFRAMAddr += m_stateDataSize;
             ++m_numSamples;
 
+            // Early out if we ran out of space
+            if(m_numSamples >= m_maxSamples)
+            {
+                m_state = LoggerState::Dump;
+                break;
+            }
+
             // Check if we landed
-            // Acceleration magnitude should be <= 1G
-            // Altitude is not changing for a long period of time
+            float accelLen = Length(m_currentState.m_acceleration);
+            float deltaAltitude = m_currentState.m_altitude - m_prevState.m_altitude;
+            if(accelLen <= 10.0f && abs(deltaAltitude) < 0.2f)
+            {
+                m_state = LoggerState::Dump;
+                break;
+            }
 
             break;
         }

@@ -26,6 +26,8 @@ public:
     // Reads a block of data starting at address
     void Read(const uint32_t address, uint8_t* data, uint8_t dataSize);
 
+    uint32_t Capacity() const;
+
 private:
     enum class OPCodes : uint8_t
     {
