@@ -8,3 +8,4 @@ Features
 + Non-volatile storage
 + Dump log data into .csv file for offline analysis
 + Safety checks to detect real launch event
++ Unit testing
