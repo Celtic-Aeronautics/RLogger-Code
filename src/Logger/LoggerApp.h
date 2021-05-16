@@ -3,6 +3,8 @@
 #include <stdint.h>
 
 #include "Utils/Math.h"
+#include "Utils/Filters.h"
+
 #include "LoggerDefinitions.h"
 
 class BMI160;
@@ -68,4 +70,10 @@ private:
 
     // With the current sampling frequency, for how long can we cample?
     float m_maxActiveTime;
+
+    // The altitude at the liftoff event
+    float m_liftOffAltitude;
+
+    // Median filter used to figure out if we landed
+    MedianFilter m_landingFilter;
 };

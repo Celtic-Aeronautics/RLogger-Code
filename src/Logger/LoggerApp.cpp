@@ -42,6 +42,7 @@ LoggerApp::LoggerApp()
     , m_numSamples(0)
     , m_maxSamples(0)
     , m_maxActiveTime(0.0f)
+    , m_liftOffAltitude(0.0f)
 {
 }
 
@@ -233,6 +234,7 @@ void LoggerApp::Update(float totalTimeSec, float deltaTime)
             {
                 m_currentFRAMAddr = 0; // Reset FRAM address 
                 m_state = LoggerState::Active;
+                m_liftOffAltitude = m_currentState.m_altitude;
             }
             break;
         }
@@ -251,18 +253,69 @@ void LoggerApp::Update(float totalTimeSec, float deltaTime)
             }
 
             // Check if we landed
-            float accelLen = Length(m_currentState.m_acceleration);
-            float deltaAltitude = m_currentState.m_altitude - m_prevState.m_altitude;
-            if(accelLen <= 10.0f && abs(deltaAltitude) < 0.2f)
+            // 1) Be within 10 meters of the lift off altitude
+            float liftDelta = abs(m_liftOffAltitude - m_currentState.m_altitude);
+            if(liftDelta <= 10.0f) 
             {
-                m_state = LoggerState::Dump;
-                break;
+                // 2) Not be under power (total acceleration vector less than 10m/s2)
+                float accelLen = Length(m_currentState.m_acceleration);
+                
+                // 3) Altitude is not changing (median is within 30cm)
+                float altitudeMedian = m_landingFilter.ProcessEntry(m_currentState.m_altitude);
+                float altitudeDeltaMedian = abs(altitudeMedian - m_currentState.m_altitude);
+
+                if((accelLen <= 10.0f) && (altitudeDeltaMedian < 0.3f))
+                {
+                    m_state = LoggerState::Dump;
+                    break;
+                }
             }
 
             break;
         }
         case LoggerState::Dump:
         {
+            // Find free file
+            char fileName[] = "Log_0.csv";
+            bool found = false;
+            for(uint8_t fileIdx = 0; fileIdx < 10; ++fileIdx)
+            {
+                fileName[4] = (char)(fileIdx + 48); // ASCII '0' is 48
+                if(!m_sd->FileExists(fileName))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            // If we can't find a slot, just override file 0 (should be the oldest one...)
+            if(!found)
+            {
+                fileName[4] = '0';
+            }
+
+            // Create the file
+            DEBUG_LOG("Creating log file: %s", fileName);
+            Print* file = m_sd->CreateFile(fileName);
+            if(!file)
+            {
+                m_state = LoggerState::Error;
+                break;
+            }
+
+            SerializeHeader(file);
+
+            State parsedState = {};
+            for(uint32_t sampleIdx = 0; sampleIdx < m_numSamples; ++sampleIdx)
+            {
+                m_fram->Read(sampleIdx * m_stateDataSize, (uint8_t*)&parsedState, m_stateDataSize);
+                SerializeState(parsedState, file);
+            }
+            m_sd->CloseFile();
+            
+            m_state = LoggerState::End;
+            m_targetDeltaTime = 5.0f; // We are done, just idle..
+
             break;
         }
         case LoggerState::End:

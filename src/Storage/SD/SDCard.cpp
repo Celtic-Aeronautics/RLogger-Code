@@ -29,7 +29,7 @@ bool SDCard::Init(uint8_t chipSelect)
 
 bool SDCard::FileExists(const char* path)
 {
-    return false;
+    return m_sd->exists(path);
 }
 
 Print* SDCard::CreateFile(const char* path)
