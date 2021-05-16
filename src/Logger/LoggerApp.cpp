@@ -6,8 +6,8 @@
 #include "Storage/MB85RS2MTA/MB85RS2MTA.h"
 #include "Storage/SD/SDCard.h"
 
-#include "Utils/Pressure.h"
-#include "Utils/Debug/DebugOutput.h"
+#include "Pressure.h"
+#include "Debug/DebugOutput.h"
 
 #include <Wire.h>
 #include <SPI.h>

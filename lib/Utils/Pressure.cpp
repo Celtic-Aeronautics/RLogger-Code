@@ -1,6 +1,6 @@
 #include "Pressure.h"
 
-#include <math.h>
+#include <RMath.h>
 
 float Pressure::MBarToPascal(float mbar)
 {

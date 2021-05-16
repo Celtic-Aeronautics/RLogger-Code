@@ -1,6 +1,6 @@
 #include "MB85RS2MTA.h"
 
-#include "Utils/Debug/DebugOutput.h"
+#include "Debug/DebugOutput.h"
 
 #include <SPI.h>
 

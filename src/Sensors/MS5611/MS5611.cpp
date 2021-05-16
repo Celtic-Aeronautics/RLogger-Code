@@ -1,6 +1,6 @@
 #include "MS5611.h"
 
-#include "Utils/Debug/DebugOutput.h"
+#include "Debug/DebugOutput.h"
 
 #include <Arduino.h>
 #include <Wire.h>
